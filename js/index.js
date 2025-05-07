@@ -243,6 +243,8 @@ const DATA = [
 	},
 ];
 
+
+
 const body = document.querySelector('body');
 let preloader = document.createElement('div');
 preloader.classList.add('loader-wrapper');
@@ -264,11 +266,17 @@ const coachCard = document.querySelector('.trainers-cards__container');
 const sorting = document.querySelector('.sorting');
 const sortBtn = document.querySelectorAll('.sorting button');
 const sidebar = document.querySelector('.sidebar');
+let currentDATA =[...DATA];
+
+let currentDirection = null;
+let currentCategory = null;
+let currentSort = null;
 
 
 function showCoachCard(arr = DATA){
+	currentDATA = arr;
 	showPreloader();
-    coachCard.innerHTML = '';
+	coachCard.innerHTML = '';
 	for (let i = 0; i < arr.length; i++) {
 		let coach = arr[i];
 		let template = document.querySelector('#trainer-card').content.cloneNode(true);
@@ -297,28 +305,21 @@ function showCoachCard(arr = DATA){
 
 			document.body.append(modal);
 		})
-        coachCard.append(template)
+		coachCard.append(template)
 	}
 
-    setTimeout(() => {
-        sorting.removeAttribute('hidden');
-        sidebar.removeAttribute('hidden');
+	setTimeout(() => {
+		sorting.removeAttribute('hidden');
+		sidebar.removeAttribute('hidden');
 		hidePreloader()
-    }, 1000)
+	}, 1000)
 
 }
 
-function removeSort() {
-	sortBtn.forEach(btn => {
-		btn.classList.remove('sorting__btn--active');
-	})
-}
+function sortFilterCoach(direction, category, sortType) {
+	let result = [...original];
 
-function filterCoach(direction, category) {
-	let filterDATA = [...DATA];
-
-
-	filterDATA = filterDATA.filter(coach => {
+	result = result.filter(coach => {
 		let directionCheck = true;
 		let categoryCheck = true;
 
@@ -343,112 +344,102 @@ function filterCoach(direction, category) {
 
 		return directionCheck && categoryCheck;
 
-	})
+	});
 
-	showCoachCard(filterDATA);
+	if (sortType === 'ЗА ПРІЗВИЩЕМ') {
+		result.sort((a, b) => {
+			return a["last name"].localeCompare(b["last name"], 'uk');
+		});
+	} else if (sortType === 'ЗА ДОСВІДОМ') {
+		result.sort((a, b) => {
+			let numA = parseInt(a.experience);
+			let numB = parseInt(b.experience);
+
+			if (numA > numB) {
+				return -1;
+			}
+			if (numA < numB) {
+				return 1
+			}
+			return 0;
+		});
+	}
+
+	return result;
 }
+
+function removeSort() {
+	sortBtn.forEach(btn => {
+		btn.classList.remove('sorting__btn--active');
+	})
+}
+
 
 let sortingKey = 'sort';
 
 const saveSort = localStorage.getItem(sortingKey);
-
-if (saveSort === 'ЗА ПРІЗВИЩЕМ') {
-	DATA.sort((a, b) => {
-		return a["last name"].localeCompare(b["last name"], 'uk');
-	});
-	removeSort();
-	sortBtn[1].classList.add('sorting__btn--active');
-	showCoachCard();
-}
-
-if (saveSort === 'ЗА ДОСВІДОМ') {
-	DATA.sort((a, b) => {
-		let numA = parseInt(a.experience);
-		let numB = parseInt(b.experience);
-
-		if (numA > numB) {
-			return -1;
-		}
-		if (numA < numB) {
-			return 1
-		}
-		return 0;
-	});
-	removeSort();
-	sortBtn[2].classList.add('sorting__btn--active');
-	showCoachCard();
-}
-
-if (saveSort === '') {
-	sortBtn[0].classList.add('sorting__btn--active');
-	showCoachCard();
-}
-
-
 const saveDirection = localStorage.getItem('filterDirection');
 const saveCategory = localStorage.getItem('filterCategory');
 
-if (saveDirection) {
-	const directionInput = document.querySelector(`input[name="direction"][value=${saveDirection}]`);
+currentDirection = saveDirection;
+currentCategory = saveCategory;
+currentSort = saveSort;
+
+if (currentDirection) {
+	const directionInput = document.querySelector(`input[name="direction"][value="${saveDirection}"]`);
 	if (directionInput) directionInput.checked = true;
 }
 
-if (saveCategory) {
-	const categoryInput = document.querySelector(`input[name="category"][value=${saveCategory}]`);
+if (currentCategory) {
+	const categoryInput = document.querySelector(`input[name="category"][value="${saveCategory}"]`);
 	if (categoryInput) categoryInput.checked = true;
 }
-filterCoach(saveDirection, saveCategory);
+
+if (currentSort) {
+	sortBtn.forEach(btn => {
+		if (btn.innerText === currentSort) {
+			btn.classList.add('sorting__btn--active');
+		}
+	});
+}
+
+const filteredSortedData = sortFilterCoach(currentDirection, currentCategory, currentSort);
+showCoachCard(filteredSortedData);
+
+localStorage.removeItem('filterDirection');
+localStorage.removeItem('filterCategory');
+localStorage.removeItem('sort');
+
+
 
 sorting.addEventListener('click', (e) => {
-    if (e.target.matches('.sorting__btn')) {
+	if (e.target.matches('.sorting__btn')) {
 		removeSort();
 		e.target.classList.add('sorting__btn--active');
 		coachCard.innerHTML = '';
 
-		if (e.target.innerText === 'ЗА ПРІЗВИЩЕМ') {
-			DATA.sort((a, b) => {
-				return a["last name"].localeCompare(b["last name"], 'uk');
-			});
-			localStorage.setItem(sortingKey, 'ЗА ПРІЗВИЩЕМ');
-			showCoachCard();
-		} else if (e.target.innerText === 'ЗА ДОСВІДОМ') {
-			DATA.sort((a, b) => {
-				let numA = parseInt(a.experience);
-				let numB = parseInt(b.experience);
+		currentSort = e.target.innerText;
+		localStorage.setItem(sortingKey, currentSort)
 
-				if (numA > numB) {
-					return -1;
-				}
-				if (numA < numB) {
-					return 1
-				}
-				return 0;
-			});
-			localStorage.setItem(sortingKey, 'ЗА ДОСВІДОМ');
-			showCoachCard();
-		} else {
-			localStorage.setItem(sortingKey, '');
-			showCoachCard(original);
-		}
+		let newDATA = sortFilterCoach(currentDirection, currentCategory, currentSort);
+		showCoachCard(newDATA);
 	}
 })
-
-
 
 let filtrField = document.querySelectorAll('fieldset');
 
 filtrField[0].setAttribute('id', 'direction');
 filtrField[1].setAttribute('id', 'category');
 
-
 sidebar.addEventListener('submit', (e) => {
 	e.preventDefault()
-	coachCard.innerHTML = '';
-	let direction = document.querySelector('input[name="direction"]:checked').value;
-	let category = document.querySelector('input[name="category"]:checked').value;
 
-	localStorage.setItem('filterDirection', direction);
-	localStorage.setItem('filterCategory', category);
+	currentDirection = document.querySelector('input[name="direction"]:checked').value;
+	currentCategory = document.querySelector('input[name="category"]:checked').value;
 
-	filterCoach(direction, category);
+	localStorage.setItem('filterDirection', currentDirection);
+	localStorage.setItem('filterCategory', currentCategory);
+
+	let newData = sortFilterCoach(currentDirection, currentCategory, currentSort);
+	showCoachCard(newData);
 })
